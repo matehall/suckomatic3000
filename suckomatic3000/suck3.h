@@ -58,7 +58,8 @@ const int lamp_pin = 11;
 
 
 const int photoresistor_pin = 0;
-const int lcd_rs = 10;
+
+const int lcd_rs = 8;
 const int lcd_enable =9;
 const int lcd_d4 = 4;
 const int lcd_d5 = 5;

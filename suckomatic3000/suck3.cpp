@@ -7,8 +7,6 @@ const int MAX_NUMBER_OF_MINUTES = 3;
 
 }
 
-
-
 //The setup function is called once at startup of the sketch
 void setup()
 {  // initialize serial communication
