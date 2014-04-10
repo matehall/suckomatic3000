@@ -10,7 +10,6 @@
 //add your includes for the project suck3 here
 #include <LiquidCrystal.h>
 
-
 //end of add your includes here
 #ifdef __cplusplus
 extern "C" {
@@ -26,12 +25,14 @@ void setup();
 const int box_empty_level = 65;
 const int box_full_level = 45;
 
-//ultrasonic sound
-const int triggerPin = 13;
-const int echoPin = 12;
+const int ZERO_PIN = 4;
+const int LAMP_PIN = 5;
+const int VAC_ON_BUTTON_PIN = 2;
+const int VAC_OFF_BUTTON_PIN = 3;
+const int ECHO_PIN = 12;
+const int TRIGGER_PIN = 13;
 
 long fuel_level = 0;
-
 
 //States
 const int EMPTY = 1;
@@ -43,8 +44,6 @@ const int VACONTOLONG = 1;
 int error_state = CLEAR;
 
 //Vac control
-const int ON_BUTTON = 2;
-const int OFF_BUTTON = 3;
 const int VAC_OFF = 0;
 const int VAC_ON = 1;
 const int CYCLON_FULL = 600;
@@ -54,22 +53,17 @@ unsigned long vacc_start_time = 0;
 
 //Cyclon level control
 int photoResistorValue = 0;
-const int lamp_pin = 11;
 
-
-const int photoresistor_pin = 0;
+const int photoresistor_pin = 1;
 
 const int lcd_rs = 8;
-const int lcd_enable =9;
+const int lcd_enable = 9;
 const int lcd_d4 = 4;
 const int lcd_d5 = 5;
 const int lcd_d6 = 6;
 const int lcd_d7 = 7;
-const int lcd_columns =16;
+const int lcd_columns = 16;
 const int lcd_row = 2;
-
-
-
 
 LiquidCrystal lcd(lcd_rs, lcd_enable, lcd_d4, lcd_d5, lcd_d6, lcd_d7);
 
