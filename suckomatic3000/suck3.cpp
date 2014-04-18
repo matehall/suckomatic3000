@@ -7,82 +7,139 @@ const int MAX_NUMBER_OF_MINUTES = 3;
 
 //The setup function is called once at startup of the sketch
 void setup() {  // initialize serial communication
-// Serial.begin(9600);
+	Serial.begin(9600);
 
 	pinMode(TRIGGER_PIN, OUTPUT);
 	pinMode(VAC_ON_BUTTON_PIN, OUTPUT);
 	pinMode(VAC_OFF_BUTTON_PIN, OUTPUT);
 	pinMode(ECHO_PIN, INPUT);
 	pinMode(LAMP_PIN, OUTPUT);
-	pinMode(photoresistor_pin,INPUT);
+	pinMode(PHOTORESISTOR_PIN, INPUT);
 
 	lcd.begin(lcd_columns, lcd_row);
 }
 
-void loop() {
-	if (error_state) {
-		// Need user intervension.
-	} else {
+static int get_next_event() {
 
-		fuel_level = get_fuel_level();
-		photoResistorValue = analogRead(photoresistor_pin);
+	photoResistorValue = analogRead(PHOTORESISTOR_PIN);
+	fuel_level = get_fuel_level();
 
-		lcd.setCursor(0, 0);
-		lcd.print("R:     ");
-		lcd.setCursor(2, 0);
-		lcd.print(photoResistorValue);
-
-		lcd.setCursor(0, 1);
-		lcd.print("L:      ");
-		lcd.setCursor(2, 1);
-		lcd.print(fuel_level);
-
-		//Serial.print(fuel_level);
-		//Serial.print("fuel_level");
-		//Serial.println();
-
-		lcd.setCursor(8, 0);
-		lcd.print("S1:     ");
-		lcd.setCursor(11, 0);
-
+	switch (state) {
+	case ST_NORMAL:
 		if (box_is_empty()) {
-			lcd.print("Empty");
-			turn_light_on();
-			last_major_state = EMPTY;
-
-		} else if (box_is_full()) {
-			lcd.print("Full");
-			last_major_state = FULL;
-			turn_vac_off();    //Just to be sure.
-			turn_light_off();
-		} else {
-			lcd.print("Normal");
+			return EV_BOX_EMPTY;
+		}
+		return EV_NO_EVENT;
+		break;
+	case ST_CYCLONE_FILLING:
+		if (box_is_full()) {
+			return EV_BOX_FULL;
 		}
 
-		lcd.setCursor(8, 1);
-		lcd.print("Vac:     ");
-		lcd.setCursor(12, 1);
-
-		if (last_major_state == EMPTY) {
-			if (cyclon_is_full(photoResistorValue)) {
-				lcd.print("OFF");
-				turn_vac_off();
-			} else {
-				turn_vac_on();
-				lcd.print("ON");
-			}
+		if (cycone_full()) {
+			return EV_CYCLONE_FULL;
 		}
-		delay(1000);
 
-		//if (vac_is_on() && vac_has_been_on_more_then(MAX_NUMBER_OF_MINUTES)) {
+		return EV_NO_EVENT;
+		break;
+	case ST_CYCLONE_EMPTENING:
+		if (box_is_full()) {
+			return EV_BOX_FULL;
+		}
 
-		//	turn_vac_off();
-		//	error_state = VACONTOLONG;
-			// Need restart;
-			//Send msg?
-		//}
+		if (cyclone_empty()) {
+			return EV_CYCLONE_EMPTY;
+		}
+
+		return EV_NO_EVENT;
+		break;
+	default:
+		return EV_NO_EVENT;
 	}
 }
+
+static int box_empty() {
+	turn_vac_on();
+	return ST_CYCLONE_FILLING;
+}
+
+static int box_full() {
+	turn_vac_off();
+
+	return ST_NORMAL;
+}
+
+static int cycone_full() {
+	turn_vac_off();
+	return ST_CYCLONE_EMPTENING;
+}
+
+static int cyclone_empty() {
+	turn_vac_on();
+	return ST_CYCLONE_FILLING;
+}
+
+//	if (error_state) {
+//		// Need user intervension.
+//	} else {
+//
+//		fuel_level = get_fuel_level();
+//		photoResistorValue = analogRead(photoresistor_pin);
+//
+//		lcd.setCursor(0, 0);
+//		lcd.print("R:     ");
+//		lcd.setCursor(2, 0);
+//		lcd.print(photoResistorValue);
+//
+//		lcd.setCursor(0, 1);
+//		lcd.print("L:      ");
+//		lcd.setCursor(2, 1);
+//		lcd.print(fuel_level);
+//
+//		//Serial.print(fuel_level);
+//		//Serial.print("fuel_level");
+//		//Serial.println();
+//
+//		lcd.setCursor(8, 0);
+//		lcd.print("S1:     ");
+//		lcd.setCursor(11, 0);
+//
+//		if (box_is_empty()) {
+//			lcd.print("Empty");
+//			turn_light_on();
+//			last_major_state = EMPTY;
+//
+//		} else if (box_is_full()) {
+//			lcd.print("Full");
+//			last_major_state = FULL;
+//			turn_vac_off();    //Just to be sure.
+//			turn_light_off();
+//		} else {
+//			lcd.print("Normal");
+//		}
+//
+//		lcd.setCursor(8, 1);
+//		lcd.print("Vac:     ");
+//		lcd.setCursor(12, 1);
+//
+//		if (last_major_state == EMPTY) {
+//			if (cyclon_is_full(photoResistorValue)) {
+//				lcd.print("OFF");
+//				turn_vac_off();
+//			} else {
+//				turn_vac_on();
+//				lcd.print("ON");
+//			}
+//		}
+//		delay(1000);
+
+//if (vac_is_on() && vac_has_been_on_more_then(MAX_NUMBER_OF_MINUTES)) {
+
+//	turn_vac_off();
+//	error_state = VACONTOLONG;
+// Need restart;
+//Send msg?
+//}
 
 boolean vac_has_been_on_more_then(int max_vacc_on_in_minutes) {
 
@@ -119,15 +176,20 @@ long get_fuel_level() {
 }
 
 boolean box_is_empty() {
-	return fuel_level > box_empty_level;
+	return fuel_level > BOX_EMPTY_LEVEL;
 }
 
 boolean box_is_full() {
-	return fuel_level < box_full_level;
+	return fuel_level < BOX_FULL_LEVEL;
 }
 
 boolean cyclon_is_full(int resistor_value) {
-	return resistor_value > CYCLON_FULL;
+	return resistor_value > CYCLONE_FULL;
+}
+
+boolean cyclon_full() {
+
+	return photoResistorValue > CYCLONE_FULL;
 }
 
 void turn_vac_on() {
@@ -157,11 +219,79 @@ boolean vac_is_off() {
 	return vac_state == VAC_OFF;
 }
 
-void turn_light_on() {
-	digitalWrite(LAMP_PIN, HIGH);
+//void turn_light_on() {
+//	digitalWrite(LAMP_PIN, HIGH);
+//}
+//
+//void turn_light_off() {
+//	digitalWrite(LAMP_PIN, LOW);
+//}
+
+static String get_state_string() {
+	switch (state) {
+	case ST_CYCLONE_EMPTENING:
+		return "Cylone Emptening";
+		break;
+	case ST_CYCLONE_FILLING:
+		return "Cylone Filling";
+		break;
+	case ST_NORMAL:
+		return "Normal";
+		break;
+	default:
+		return "Err";
+	}
 }
 
-void turn_light_off() {
-	digitalWrite(LAMP_PIN, LOW);
+void updateLCD() {
+	lcd.setCursor(0, 0);
+	lcd.print("R:     ");
+	lcd.setCursor(2, 0);
+	lcd.print(photoResistorValue);
+
+	lcd.setCursor(7, 0);
+	lcd.print("L:      ");
+	lcd.setCursor(9, 0);
+	lcd.print(fuel_level);
+
+	lcd.setCursor(14, 0);
+	lcd.print("V:    ");
+	lcd.setCursor(15, 0);
+	lcd.print(vac_state);
+
+	lcd.setCursor(0, 1);
+	lcd.print("S:               ");
+	lcd.setCursor(2, 1);
+	lcd.print(get_state_string());
+
+	Serial.print("photoResistorValue:");
+	Serial.print(photoResistorValue);
+	Serial.print(" ");
+	Serial.print("fuel_level:");
+	Serial.print(fuel_level);
+	Serial.print(" ");
+	Serial.print("state:");
+	Serial.print(get_state_string());
+	Serial.println();
+
 }
 
+void loop() {
+
+	int i;
+
+	state = ST_NORMAL;
+	while (state != ST_TERM) {
+		delay(1000);
+		event = get_next_event();
+		for (i = 0; i < TRANS_COUNT; i++) {
+			if ((state == trans[i].state) || (ST_ANY == trans[i].state)) {
+				if ((event == trans[i].event) || (EV_ANY == trans[i].event)) {
+					state = (trans[i].fn)();
+					break;
+				}
+			}
+		}
+		updateLCD();
+	}
+}
