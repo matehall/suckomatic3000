@@ -26,6 +26,7 @@ enum State {
 	ST_NORMAL,
 	ST_CYCLONE_FILLING,
 	ST_CYCLONE_EMPTENING,
+	ST_ERR_VAC_ON_TO_LONG,
 	ST_TERM,
 	ST_ERR
 } state;
@@ -74,13 +75,17 @@ boolean cyclone_is_full();
 boolean cyclone_is_empty();
 boolean vac_has_been_on_more_then(int);
 
-tTransition trans[] = { { ST_NORMAL, EV_BOX_EMPTY, &box_empty },
-		{ST_CYCLONE_FILLING, EV_BOX_FULL, &box_full }, { ST_CYCLONE_FILLING,
-		EV_CYCLONE_FULL, &cycone_full }, { ST_CYCLONE_FILLING, EV_NO_EVENT,
-		&self_trans }, { ST_CYCLONE_FILLING, EV_VAC_TO_LONG, &vac_to_long }, {
-		ST_CYCLONE_EMPTENING, EV_CYCLONE_EMPTY, &cyclone_empty }, {
-		ST_CYCLONE_EMPTENING, EV_BOX_FULL, &box_full }, { ST_CYCLONE_EMPTENING,
-		EV_NO_EVENT, &self_trans },};
+tTransition trans[] = {
+		{ST_NORMAL, EV_BOX_EMPTY, &box_empty },
+		{ST_CYCLONE_FILLING, EV_BOX_FULL, &box_full },
+		{ST_CYCLONE_FILLING, EV_CYCLONE_FULL, &cycone_full },
+		{ST_CYCLONE_FILLING, EV_NO_EVENT, &self_trans },
+		{ST_CYCLONE_FILLING, EV_VAC_TO_LONG, &vac_to_long },
+		{ST_CYCLONE_EMPTENING, EV_CYCLONE_EMPTY, &cyclone_empty },
+		{ST_CYCLONE_EMPTENING, EV_BOX_FULL, &box_full },
+		{ST_CYCLONE_EMPTENING,	EV_NO_EVENT, &self_trans },
+		{ST_ERR_VAC_ON_TO_LONG,	EV_NO_EVENT, &self_trans },
+};
 
 #define TRANS_COUNT (sizeof(trans)/sizeof(*trans))
 
@@ -89,6 +94,7 @@ const int BOX_EMPTY_LEVEL = 80;
 const int BOX_FULL_LEVEL = 45;
 const int CYCLONE_FULL = 600;
 const int MAX_NUMBER_OF_SECONDS = 30;
+const int MAX_VAC_RESTART_ATTEMPTS = 2;
 
 //Digital pins
 const int ZERO_PIN = 0;
@@ -103,11 +109,10 @@ const int PHOTORESISTOR_PIN = 1;
 
 long fuel_level = 0;
 int photoResistorValue = 0;
+int vac_restarts_attempts = 0;
 
 const int VAC_OFF = 0;
 const int VAC_ON = 1;
-
-
 
 //Vac control
 

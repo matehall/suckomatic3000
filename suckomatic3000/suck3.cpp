@@ -70,6 +70,7 @@ static State box_full() {
 
 static State cycone_full() {
 	turn_vac_off();
+	vac_restarts_attempts = 0;
 	return ST_CYCLONE_EMPTENING;
 }
 
@@ -78,9 +79,15 @@ static State cyclone_empty() {
 	return ST_CYCLONE_FILLING;
 }
 
-static State vac_to_long(){
+static State vac_to_long() {
+	vac_restarts_attempts++;
 	turn_vac_off();
-	return ST_ERR;
+	if (vac_restarts_attempts > MAX_VAC_RESTART_ATTEMPTS) {
+		return ST_ERR;
+	}
+	delay(5000);
+	turn_vac_on();
+	return ST_CYCLONE_FILLING;
 }
 
 boolean vac_has_been_on_more_then(int max_vacc_on_in_seconds) {
@@ -179,6 +186,8 @@ static String get_state_string() {
 	case ST_NORMAL:
 		return "Normal";
 		break;
+	case ST_ERR_VAC_ON_TO_LONG:
+		return "Vac on to long";
 	default:
 		return "Err";
 	}
@@ -186,26 +195,26 @@ static String get_state_string() {
 
 void updateLCD() {
 	if (state != ST_ERR) {
-	lcd.setCursor(0, 0);
-	lcd.print("R:     ");
-	lcd.setCursor(2, 0);
-	lcd.print(photoResistorValue);
+		lcd.setCursor(0, 0);
+		lcd.print("R     ");
+		lcd.setCursor(1, 0);
+		lcd.print(photoResistorValue);
 
-	lcd.setCursor(7, 0);
-	lcd.print("L:     ");
-	lcd.setCursor(9, 0);
-	lcd.print(fuel_level);
+		lcd.setCursor(6, 0);
+		lcd.print("L     ");
+		lcd.setCursor(7, 0);
+		lcd.print(fuel_level);
 
-	lcd.setCursor(13, 0);
-	lcd.print("V:    ");
-	lcd.setCursor(15, 0);
-	lcd.print(vac_state);
+		lcd.setCursor(12, 0);
+		lcd.print("V    ");
+		lcd.setCursor(13, 0);
+		lcd.print(vac_state*10+vac_restarts_attempts);
 
-	lcd.setCursor(0, 1);
-	lcd.print("S:               ");
-	lcd.setCursor(2, 1);
-	lcd.print(get_state_string());
-	}else{
+		lcd.setCursor(0, 1);
+		lcd.print("S:               ");
+		lcd.setCursor(2, 1);
+		lcd.print(get_state_string());
+	} else {
 		lcd.setCursor(0, 0);
 		lcd.print("ERR:Vac on long.");
 		lcd.setCursor(0, 1);
