@@ -1,13 +1,9 @@
 // Do not remove the include below
 #include "suck3.h"
 
-namespace {
-const int MAX_NUMBER_OF_MINUTES = 3;
-}
-
 //The setup function is called once at startup of the sketch
 void setup() {  // initialize serial communication
-	Serial.begin(9600);
+//Serial.begin(9600);
 
 	pinMode(TRIGGER_PIN, OUTPUT);
 	pinMode(VAC_ON_BUTTON_PIN, OUTPUT);
@@ -19,7 +15,7 @@ void setup() {  // initialize serial communication
 	lcd.begin(lcd_columns, lcd_row);
 }
 
-static int get_next_event() {
+static Event get_next_event() {
 
 	photoResistorValue = analogRead(PHOTORESISTOR_PIN);
 	fuel_level = get_fuel_level();
@@ -32,11 +28,15 @@ static int get_next_event() {
 		return EV_NO_EVENT;
 		break;
 	case ST_CYCLONE_FILLING:
+		if (vac_has_been_on_more_then(MAX_NUMBER_OF_SECONDS)) {
+			return EV_VAC_TO_LONG;
+		}
+
 		if (box_is_full()) {
 			return EV_BOX_FULL;
 		}
 
-		if (cycone_full()) {
+		if (cyclone_is_full()) {
 			return EV_CYCLONE_FULL;
 		}
 
@@ -47,7 +47,7 @@ static int get_next_event() {
 			return EV_BOX_FULL;
 		}
 
-		if (cyclone_empty()) {
+		if (cyclone_is_empty()) {
 			return EV_CYCLONE_EMPTY;
 		}
 
@@ -58,95 +58,37 @@ static int get_next_event() {
 	}
 }
 
-static int box_empty() {
+static State box_empty() {
 	turn_vac_on();
 	return ST_CYCLONE_FILLING;
 }
 
-static int box_full() {
+static State box_full() {
 	turn_vac_off();
-
 	return ST_NORMAL;
 }
 
-static int cycone_full() {
+static State cycone_full() {
 	turn_vac_off();
 	return ST_CYCLONE_EMPTENING;
 }
 
-static int cyclone_empty() {
+static State cyclone_empty() {
 	turn_vac_on();
 	return ST_CYCLONE_FILLING;
 }
 
-//	if (error_state) {
-//		// Need user intervension.
-//	} else {
-//
-//		fuel_level = get_fuel_level();
-//		photoResistorValue = analogRead(photoresistor_pin);
-//
-//		lcd.setCursor(0, 0);
-//		lcd.print("R:     ");
-//		lcd.setCursor(2, 0);
-//		lcd.print(photoResistorValue);
-//
-//		lcd.setCursor(0, 1);
-//		lcd.print("L:      ");
-//		lcd.setCursor(2, 1);
-//		lcd.print(fuel_level);
-//
-//		//Serial.print(fuel_level);
-//		//Serial.print("fuel_level");
-//		//Serial.println();
-//
-//		lcd.setCursor(8, 0);
-//		lcd.print("S1:     ");
-//		lcd.setCursor(11, 0);
-//
-//		if (box_is_empty()) {
-//			lcd.print("Empty");
-//			turn_light_on();
-//			last_major_state = EMPTY;
-//
-//		} else if (box_is_full()) {
-//			lcd.print("Full");
-//			last_major_state = FULL;
-//			turn_vac_off();    //Just to be sure.
-//			turn_light_off();
-//		} else {
-//			lcd.print("Normal");
-//		}
-//
-//		lcd.setCursor(8, 1);
-//		lcd.print("Vac:     ");
-//		lcd.setCursor(12, 1);
-//
-//		if (last_major_state == EMPTY) {
-//			if (cyclon_is_full(photoResistorValue)) {
-//				lcd.print("OFF");
-//				turn_vac_off();
-//			} else {
-//				turn_vac_on();
-//				lcd.print("ON");
-//			}
-//		}
-//		delay(1000);
+static State vac_to_long(){
+	turn_vac_off();
+	return ST_ERR;
+}
 
-//if (vac_is_on() && vac_has_been_on_more_then(MAX_NUMBER_OF_MINUTES)) {
-
-//	turn_vac_off();
-//	error_state = VACONTOLONG;
-// Need restart;
-//Send msg?
-//}
-
-boolean vac_has_been_on_more_then(int max_vacc_on_in_minutes) {
+boolean vac_has_been_on_more_then(int max_vacc_on_in_seconds) {
 
 	unsigned long current_time = millis();
 	unsigned long elapsed_time = (current_time - vacc_start_time) / 1000;
 
-	if (elapsed_time > max_vacc_on_in_minutes) {
+	if (elapsed_time > max_vacc_on_in_seconds) {
 		return true;
 	}
 
@@ -183,13 +125,12 @@ boolean box_is_full() {
 	return fuel_level < BOX_FULL_LEVEL;
 }
 
-boolean cyclon_is_full(int resistor_value) {
-	return resistor_value > CYCLONE_FULL;
+boolean cyclone_is_full() {
+	return photoResistorValue > CYCLONE_FULL;
 }
 
-boolean cyclon_full() {
-
-	return photoResistorValue > CYCLONE_FULL;
+boolean cyclone_is_empty() {
+	return photoResistorValue < CYCLONE_FULL;
 }
 
 void turn_vac_on() {
@@ -230,10 +171,10 @@ boolean vac_is_off() {
 static String get_state_string() {
 	switch (state) {
 	case ST_CYCLONE_EMPTENING:
-		return "Cylone Emptening";
+		return "Emptening Cyclo";
 		break;
 	case ST_CYCLONE_FILLING:
-		return "Cylone Filling";
+		return "Filling Cyclone";
 		break;
 	case ST_NORMAL:
 		return "Normal";
@@ -244,17 +185,18 @@ static String get_state_string() {
 }
 
 void updateLCD() {
+	if (state != ST_ERR) {
 	lcd.setCursor(0, 0);
 	lcd.print("R:     ");
 	lcd.setCursor(2, 0);
 	lcd.print(photoResistorValue);
 
 	lcd.setCursor(7, 0);
-	lcd.print("L:      ");
+	lcd.print("L:     ");
 	lcd.setCursor(9, 0);
 	lcd.print(fuel_level);
 
-	lcd.setCursor(14, 0);
+	lcd.setCursor(13, 0);
 	lcd.print("V:    ");
 	lcd.setCursor(15, 0);
 	lcd.print(vac_state);
@@ -263,16 +205,24 @@ void updateLCD() {
 	lcd.print("S:               ");
 	lcd.setCursor(2, 1);
 	lcd.print(get_state_string());
+	}else{
+		lcd.setCursor(0, 0);
+		lcd.print("ERR:Vac on long.");
+		lcd.setCursor(0, 1);
+		lcd.print("Max time(sec):");
+		lcd.print(MAX_NUMBER_OF_SECONDS);
 
-	Serial.print("photoResistorValue:");
-	Serial.print(photoResistorValue);
-	Serial.print(" ");
-	Serial.print("fuel_level:");
-	Serial.print(fuel_level);
-	Serial.print(" ");
-	Serial.print("state:");
-	Serial.print(get_state_string());
-	Serial.println();
+	}
+
+//	Serial.print("photoResistorValue:");
+//	Serial.print(photoResistorValue);
+//	Serial.print(" ");
+//	Serial.print("fuel_level:");
+//	Serial.print(fuel_level);
+//	Serial.print(" ");
+//	Serial.print("state:");
+//	Serial.print(get_state_string());
+//	Serial.println();
 
 }
 

@@ -21,38 +21,43 @@ void setup();
 #endif
 
 //add your function definitions for the project suck3 here
+enum State {
+	ST_ANY,
+	ST_NORMAL,
+	ST_CYCLONE_FILLING,
+	ST_CYCLONE_EMPTENING,
+	ST_TERM,
+	ST_ERR
+} state;
+
+enum Event {
+	EV_ANY,
+	EV_CYCLONE_FULL,
+	EV_CYCLONE_EMPTY,
+	EV_BOX_FULL,
+	EV_BOX_EMPTY,
+	EV_VAC_TO_LONG,
+	EV_NO_EVENT
+} event;
 
 typedef struct {
-	int state;
-	int event;
-	int (*fn)(void);
+	State state;
+	Event event;
+	State (*fn)(void);
 } tTransition;
 
-#define ST_ANY -1
-#define ST_NORMAL  0
-#define ST_CYCLONE_FILLING  1
-#define ST_CYCLONE_EMPTENING 2
-#define ST_TERM 3
-
-int state;
-int event;
-
-#define EV_ANY              -1
-#define EV_CYCLONE_FULL		5000
-#define EV_CYCLONE_EMPTY		5001
-#define EV_BOX_FULL			5002
-#define EV_BOX_EMPTY		5003
-#define EV_NO_EVENT 5004
-
 //Events
-static int box_empty(void);
-static int cycone_full(void);
-static int cyclone_empty(void);
-static int box_full(void);
-static int self_trans(void){return state;};
+static State box_empty(void);
+static State cycone_full(void);
+static State cyclone_empty(void);
+static State box_full(void);
+static State self_trans(void) {
+	return state;
+};
+static State vac_to_long(void);
 
 //Helpers
-static int get_next_event(void);
+static Event get_next_event(void);
 static void updateLCD(void);
 static String get_state_string(void);
 
@@ -65,27 +70,25 @@ void turn_vac_on();
 boolean vac_is_off();
 void turn_light_on();
 boolean vac_is_on();
-boolean cyclon_is_full(int);
+boolean cyclone_is_full();
+boolean cyclone_is_empty();
 boolean vac_has_been_on_more_then(int);
 
-tTransition trans[] = {
-		{ ST_NORMAL, EV_BOX_EMPTY, &box_empty },
-		{ ST_CYCLONE_FILLING, EV_BOX_FULL, &box_full },
-		{ ST_CYCLONE_FILLING, EV_CYCLONE_FULL, &cycone_full },
-		{ ST_CYCLONE_FILLING, EV_NO_EVENT, &self_trans },
-		{ ST_CYCLONE_EMPTENING, EV_CYCLONE_EMPTY, &cyclone_empty },
-		{ ST_CYCLONE_EMPTENING, EV_BOX_EMPTY, &box_full },
-		{ ST_CYCLONE_EMPTENING, EV_NO_EVENT, &self_trans },
-
-};
+tTransition trans[] = { { ST_NORMAL, EV_BOX_EMPTY, &box_empty },
+		{ST_CYCLONE_FILLING, EV_BOX_FULL, &box_full }, { ST_CYCLONE_FILLING,
+		EV_CYCLONE_FULL, &cycone_full }, { ST_CYCLONE_FILLING, EV_NO_EVENT,
+		&self_trans }, { ST_CYCLONE_FILLING, EV_VAC_TO_LONG, &vac_to_long }, {
+		ST_CYCLONE_EMPTENING, EV_CYCLONE_EMPTY, &cyclone_empty }, {
+		ST_CYCLONE_EMPTENING, EV_BOX_FULL, &box_full }, { ST_CYCLONE_EMPTENING,
+		EV_NO_EVENT, &self_trans },};
 
 #define TRANS_COUNT (sizeof(trans)/sizeof(*trans))
 
-
 //Levels
-const int BOX_EMPTY_LEVEL = 65;
+const int BOX_EMPTY_LEVEL = 80;
 const int BOX_FULL_LEVEL = 45;
 const int CYCLONE_FULL = 600;
+const int MAX_NUMBER_OF_SECONDS = 30;
 
 //Digital pins
 const int ZERO_PIN = 0;
@@ -104,21 +107,13 @@ int photoResistorValue = 0;
 const int VAC_OFF = 0;
 const int VAC_ON = 1;
 
-//States
-//const int EMPTY = 1;
-//const int FULL = 0;
-//int last_major_state = EMPTY;
-//const int CLEAR = 0;
-//const int VACONTOLONG = 1;
-//
-//int error_state = CLEAR;
+
 
 //Vac control
 
 int vac_state = VAC_OFF;
 
 unsigned long vacc_start_time = 0;
-
 
 //LCD
 const int lcd_rs = 8;
@@ -130,10 +125,7 @@ const int lcd_d7 = 7;
 const int lcd_columns = 16;
 const int lcd_row = 2;
 
-
 LiquidCrystal lcd(lcd_rs, lcd_enable, lcd_d4, lcd_d5, lcd_d6, lcd_d7);
-
-
 
 //Do not add code below this line
 #endif /* _suck3_H_ */
