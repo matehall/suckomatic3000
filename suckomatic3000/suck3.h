@@ -93,7 +93,7 @@ tTransition trans[] = {
 const int BOX_EMPTY_LEVEL = 80;
 const int BOX_FULL_LEVEL = 45;
 const int CYCLONE_FULL = 600;
-const int MAX_NUMBER_OF_SECONDS = 30;
+const int MAX_NUMBER_OF_SECONDS = 120;
 const int MAX_VAC_RESTART_ATTEMPTS = 2;
 
 //Digital pins
@@ -105,7 +105,7 @@ const int ECHO_PIN = 12;
 const int TRIGGER_PIN = 13;
 
 //Analog pins
-const int PHOTORESISTOR_PIN = 1;
+const int PHOTORESISTOR_PIN = 0;
 
 long fuel_level = 0;
 int photoResistorValue = 0;
@@ -121,7 +121,8 @@ int vac_state = VAC_OFF;
 unsigned long vacc_start_time = 0;
 
 //LCD
-const int lcd_rs = 8;
+//const int lcd_rs = 8;
+const int lcd_rs = 10;
 const int lcd_enable = 9;
 const int lcd_d4 = 4;
 const int lcd_d5 = 5;

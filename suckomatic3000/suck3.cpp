@@ -1,8 +1,7 @@
 // Do not remove the include below
 #include "suck3.h"
 
-//The setup function is called once at startup of the sketch
-void setup() {  // initialize serial communication
+void setup() {
 //Serial.begin(9600);
 
 	pinMode(TRIGGER_PIN, OUTPUT);
@@ -115,9 +114,6 @@ long get_fuel_level() {
 	digitalWrite(TRIGGER_PIN, HIGH);
 	delayMicroseconds(5);
 	digitalWrite(TRIGGER_PIN, LOW);
-
-	//setting up the input pin, and receiving the duration in
-	//microseconds for the sound to bounce off the object infront
 
 	duration = pulseIn(ECHO_PIN, HIGH);
 
@@ -236,9 +232,7 @@ void updateLCD() {
 }
 
 void loop() {
-
 	int i;
-
 	state = ST_NORMAL;
 	while (state != ST_TERM) {
 		delay(1000);
